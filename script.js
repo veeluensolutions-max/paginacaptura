@@ -331,16 +331,17 @@ document.addEventListener('DOMContentLoaded', () => {
             url_origem: dataPayload.url_origem || ''
         };
 
-        // Salva no Supabase (Banco de Dados em Nuvem)
-        let supabaseSuccess = false;
-        if (window.supabase) {
-            try {
-                const supabaseClient = window.supabase.createClient(
-                    'https://qqvrgxhemzsgjbradlqv.supabase.co',
-                    'sb_publishable_IxdmYD6DJ_GMfxGbP2rOnw_3wP9u-_c'
-                );
-                
-                const { error } = await supabaseClient.from('leads').insert([{
+        // Salva no Supabase (Banco de Dados em Nuvem via API REST Direta)
+        try {
+            const supabaseResp = await fetch('https://qqvrgxhemzsgjbradlqv.supabase.co/rest/v1/leads', {
+                method: 'POST',
+                headers: {
+                    'apikey': 'sb_publishable_IxdmYD6DJ_GMfxGbP2rOnw_3wP9u-_c',
+                    'Authorization': 'Bearer sb_publishable_IxdmYD6DJ_GMfxGbP2rOnw_3wP9u-_c',
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
                     id: newLead.id,
                     data_envio: newLead.data_envio,
                     status: newLead.status,
@@ -364,17 +365,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     utm_term: newLead.utm_term,
                     gclid: newLead.gclid,
                     url_origem: newLead.url_origem
-                }]);
+                })
+            });
 
-                if (!error) {
-                    supabaseSuccess = true;
-                    console.log('[Supabase] Lead inserido com sucesso!');
-                } else {
-                    console.warn('[Supabase] Erro ao inserir lead:', error);
-                }
-            } catch (err) {
-                console.error('[Supabase] Falha de conexão:', err);
+            if (supabaseResp.ok) {
+                console.log('[Supabase] Lead gravado com sucesso no banco de dados!');
+            } else {
+                const errText = await supabaseResp.text();
+                console.warn('[Supabase] Resposta da API:', errText);
             }
+        } catch (err) {
+            console.error('[Supabase] Erro ao enviar para o banco:', err);
         }
 
         // Salva no localStorage como backup de segurança

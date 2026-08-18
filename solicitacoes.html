@@ -734,36 +734,36 @@
             const modalContent = document.getElementById('modal-content');
             const modalCloseBtn = document.getElementById('modal-close-btn');
 
-            // 1. Inicializa Cliente Supabase
+            // 1. Configurações da API Supabase
             const SUPABASE_URL = 'https://qqvrgxhemzsgjbradlqv.supabase.co';
-            const SUPABASE_ANON_KEY = 'sb_publishable_IxdmYD6DJ_GMfxGbP2rOnw_3wP9u-_c';
-            const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+            const SUPABASE_KEY = 'sb_publishable_IxdmYD6DJ_GMfxGbP2rOnw_3wP9u-_c';
+            const SUPABASE_HEADERS = {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+            };
 
             let cachedLeads = [];
 
-            // 2. Carrega os leads do Supabase com fallback para o localStorage
+            // 2. Carrega os leads do Supabase via REST com fallback para localStorage
             async function fetchLeads() {
                 let leads = [];
-                if (supabase) {
-                    try {
-                        const { data, error } = await supabase
-                            .from('leads')
-                            .select('*')
-                            .order('created_at', { ascending: false });
+                try {
+                    const resp = await fetch(`${SUPABASE_URL}/rest/v1/leads?select=*&order=created_at.desc`, {
+                        method: 'GET',
+                        headers: SUPABASE_HEADERS
+                    });
 
-                        if (!error && data) {
-                            leads = data;
-                            // Atualiza o backup local
-                            localStorage.setItem('excelencia_leads', JSON.stringify(leads));
-                        } else {
-                            console.warn('[Supabase] Erro ao buscar dados, usando local:', error);
-                            leads = JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
-                        }
-                    } catch (e) {
-                        console.error('[Supabase] Falha ao consultar:', e);
+                    if (resp.ok) {
+                        leads = await resp.json();
+                        localStorage.setItem('excelencia_leads', JSON.stringify(leads));
+                        console.log('[Supabase] Leads carregados com sucesso:', leads.length);
+                    } else {
+                        console.warn('[Supabase] Falha no GET, usando local:', resp.statusText);
                         leads = JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
                     }
-                } else {
+                } catch (e) {
+                    console.error('[Supabase] Erro de rede ao buscar leads:', e);
                     leads = JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
                 }
                 
@@ -883,13 +883,16 @@
 
             // 4. Funções Globais para Mudança de Status e Ações
             window.changeLeadStatus = async (id, newStatus) => {
-                if (supabase) {
-                    try {
-                        await supabase.from('leads').update({ status: newStatus }).eq('id', id);
-                    } catch (e) {
-                        console.error('Erro ao atualizar status no Supabase:', e);
-                    }
+                try {
+                    await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${id}`, {
+                        method: 'PATCH',
+                        headers: SUPABASE_HEADERS,
+                        body: JSON.stringify({ status: newStatus })
+                    });
+                } catch (e) {
+                    console.error('Erro ao atualizar status no Supabase:', e);
                 }
+
                 const leadIndex = cachedLeads.findIndex(l => l.id === id);
                 if (leadIndex !== -1) {
                     cachedLeads[leadIndex].status = newStatus;
@@ -900,13 +903,15 @@
 
             window.deleteLead = async (id) => {
                 if (confirm('Deseja realmente remover esta solicitação?')) {
-                    if (supabase) {
-                        try {
-                            await supabase.from('leads').delete().eq('id', id);
-                        } catch (e) {
-                            console.error('Erro ao deletar no Supabase:', e);
-                        }
+                    try {
+                        await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${id}`, {
+                            method: 'DELETE',
+                            headers: SUPABASE_HEADERS
+                        });
+                    } catch (e) {
+                        console.error('Erro ao deletar no Supabase:', e);
                     }
+
                     cachedLeads = cachedLeads.filter(l => l.id !== id);
                     localStorage.setItem('excelencia_leads', JSON.stringify(cachedLeads));
                     renderDashboard(cachedLeads);
@@ -1068,12 +1073,14 @@
                     utm_content: 'anuncio_conama_513'
                 };
 
-                if (supabase) {
-                    try {
-                        await supabase.from('leads').insert([demoLead]);
-                    } catch (e) {
-                        console.error('Erro ao simular no Supabase:', e);
-                    }
+                try {
+                    await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+                        method: 'POST',
+                        headers: SUPABASE_HEADERS,
+                        body: JSON.stringify(demoLead)
+                    });
+                } catch (e) {
+                    console.error('Erro ao simular no Supabase:', e);
                 }
 
                 cachedLeads.unshift(demoLead);
