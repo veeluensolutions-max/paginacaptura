@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render inicial da primeira aba
     renderSectorTab('agro');
 
-    // 6. FORMULÁRIO MULTI-STEP (2 ETAPAS)
+    // 6. FORMULÁRIO MULTI-STEP (2 ETAPAS) & MÁSCARA INTELIGENTE
     const btnNextStep = document.getElementById('btn-next-step');
     const btnPrevStep = document.getElementById('btn-prev-step');
     const stepPanel1 = document.getElementById('step-panel-1');
@@ -215,6 +215,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const leadForm = document.getElementById('lead-form');
     const formAlert = document.getElementById('form-msg');
     const submitBtn = document.getElementById('btn-submit-form');
+    const phoneInput = document.getElementById('whatsapp');
+
+    // Máscara dinâmica de telefone/WhatsApp: (XX) 9XXXX-XXXX ou (XX) XXXX-XXXX
+    if (phoneInput) {
+        phoneInput.addEventListener('input', (e) => {
+            let val = e.target.value.replace(/\D/g, '');
+            if (val.length > 11) val = val.substring(0, 11);
+
+            if (val.length > 10) {
+                // Celular com 9 dígitos: (11) 98765-4321
+                e.target.value = `(${val.substring(0,2)}) ${val.substring(2,7)}-${val.substring(7,11)}`;
+            } else if (val.length > 6) {
+                // Fixo ou celular digitando: (11) 8765-4321
+                e.target.value = `(${val.substring(0,2)}) ${val.substring(2,6)}-${val.substring(6,10)}`;
+            } else if (val.length > 2) {
+                e.target.value = `(${val.substring(0,2)}) ${val.substring(2)}`;
+            } else if (val.length > 0) {
+                e.target.value = `(${val}`;
+            } else {
+                e.target.value = '';
+            }
+        });
+    }
 
     // Avança para Etapa 2
     btnNextStep.addEventListener('click', () => {
@@ -272,8 +295,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { once: true });
 
-    // Envio do formulário
-    leadForm.addEventListener('submit', (e) => {
+    // Envio do formulário com integração e fallback
+    leadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         // Coleta de todos os dados preenchidos
@@ -317,6 +340,20 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Erro ao armazenar lead localmente:', err);
         }
 
+        // Envio opcional via Webhook externo se configurado
+        if (window.EXCELENCIA_WEBHOOK_URL) {
+            try {
+                fetch(window.EXCELENCIA_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newLead),
+                    mode: 'no-cors'
+                }).catch(e => console.log('Webhook info:', e));
+            } catch (e) {
+                console.warn('Webhook dispatch skipped:', e);
+            }
+        }
+
         // Disparo de submit no analytics
         pushToDataLayer('form_submit', {
             nome: newLead.nome,
@@ -335,10 +372,16 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.disabled = true;
 
         setTimeout(() => {
+            const cleanPhone = (newLead.whatsapp || '').replace(/\D/g, '');
+            const waRedirect = `https://wa.me/5581997620079?text=Ol%C3%A1%2C+acabei+de+enviar+meus+dados+no+site+para+avalia%C3%A7%C3%A3o+de+Modelagem+Atmosf%C3%A9rica.+Meu+nome+%C3%A9+${encodeURIComponent(newLead.nome)}+da+empresa+${encodeURIComponent(newLead.empresa)}.`;
+
             formAlert.className = 'form-alert-box success';
             formAlert.innerHTML = `
                 <strong>Solicitação recebida com sucesso!</strong><br>
-                Nossa equipe técnica analisará as características do seu empreendimento e entrará em contato em breve.
+                Nossa equipe técnica analisará as características da sua empresa e entrará em contato em breve.<br>
+                <a href="${waRedirect}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 10px; font-weight: 700; color: #065F46; text-decoration: underline;">
+                    Deseja agilizar? Clique aqui para falar diretamente pelo WhatsApp →
+                </a>
             `;
             
             leadForm.reset();
@@ -359,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 lead_id: newLead.id
             });
 
-        }, 1000);
+        }, 800);
     });
 
     // 7. ACORDEÃO INTERATIVO DO FAQ
@@ -399,7 +442,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 8. RASTREAMENTO DE CLIQUES EM CTAS E WHATSAPP
+    // 8. BARRA FIXA MOBILE (EXIBIÇÃO INTELIGENTE NO SCROLL)
+    const mobileBottomBar = document.getElementById('mobile-bottom-bar');
+    const contactSection = document.getElementById('contato');
+
+    if (mobileBottomBar && contactSection) {
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            const heroHeight = 450;
+            const contactTop = contactSection.getBoundingClientRect().top + window.scrollY;
+
+            // Mostra após passar do Hero e esconde quando o formulário estiver na tela
+            if (scrollY > heroHeight && scrollY < contactTop - 300) {
+                mobileBottomBar.classList.add('active');
+            } else {
+                mobileBottomBar.classList.remove('active');
+            }
+        }, { passive: true });
+    }
+
+    // 9. RASTREAMENTO DE CLIQUES EM CTAS E WHATSAPP
     const trackClick = (elementId, eventName, eventData) => {
         const el = document.getElementById(elementId);
         if (el) {
@@ -413,6 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
     trackClick('btn-hero-solicitar', 'click_cta_hero', { location: 'hero_primary' });
     trackClick('btn-hero-whatsapp', 'click_whatsapp', { location: 'hero_whatsapp' });
     trackClick('btn-whatsapp-float', 'click_whatsapp', { location: 'float_button' });
+    trackClick('btn-mobile-diag', 'click_mobile_bar_diag', { location: 'mobile_bar' });
+    trackClick('btn-mobile-wa', 'click_mobile_bar_wa', { location: 'mobile_bar' });
 
     // Função Central do Google Tag Manager / DataLayer
     function pushToDataLayer(eventName, params = {}) {
@@ -425,3 +489,4 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[DataLayer] ${eventName}:`, params);
     }
 });
+

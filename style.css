@@ -1922,6 +1922,180 @@ img {
 .fade-in.visible { opacity: 1; transform: translateY(0); }
 
 /* ==========================================================================
+   SEÇÃO DE CASOS PRÁTICOS & CENÁRIOS INDUSTRIAIS
+   ========================================================================== */
+.cases-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    margin-top: 3rem;
+}
+
+.case-card {
+    background: var(--white);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-lg);
+    padding: 30px 26px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+.case-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--emerald-500), var(--teal-cyan));
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.case-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--emerald-400);
+}
+
+.case-card:hover::before {
+    opacity: 1;
+}
+
+.case-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--slate-100);
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-green);
+    margin-bottom: 16px;
+    width: fit-content;
+}
+
+.case-card h3 {
+    font-size: 1.2rem;
+    color: var(--slate-900);
+    margin-bottom: 12px;
+    line-height: 1.35;
+}
+
+.case-card p {
+    font-size: 0.92rem;
+    color: var(--slate-600);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.case-meta-list {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-bottom: 20px;
+    font-size: 0.82rem;
+}
+
+.case-meta-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--slate-200);
+}
+
+.case-meta-item:last-child {
+    border-bottom: none;
+}
+
+.case-meta-label {
+    color: var(--slate-600);
+    font-weight: 600;
+}
+
+.case-meta-val {
+    color: var(--slate-900);
+    font-weight: 700;
+}
+
+.case-result-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ECFDF5;
+    color: #065F46;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.84rem;
+    font-weight: 700;
+    border: 1px solid #A7F3D0;
+}
+
+/* ==========================================================================
+   BARRA FIXA MOBILE (STICKY MOBILE BOTTOM BAR)
+   ========================================================================== */
+.mobile-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(10, 28, 22, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(52, 211, 153, 0.25);
+    padding: 12px 16px;
+    display: none;
+    z-index: 998;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-bottom-bar.active {
+    transform: translateY(0);
+}
+
+.mobile-bottom-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.mobile-bar-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 14px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.mobile-bar-btn.btn-primary {
+    background: var(--amber-500);
+    color: var(--primary-dark);
+}
+
+.mobile-bar-btn.btn-wa {
+    background: #25D366;
+    color: #FFFFFF;
+}
+
+/* ==========================================================================
    RESPONSIVIDADE (MOBILE & TABLET)
    ========================================================================== */
 @media (max-width: 1080px) {
@@ -1930,7 +2104,7 @@ img {
     .diag-steps-grid { grid-template-columns: 1fr; }
     .diag-result-box { flex-direction: column; text-align: center; }
     .service-visual-grid, .differentials-layout, .deliverables-layout, .comparison-grid { grid-template-columns: 1fr; gap: 30px; }
-    .cols-4 { grid-template-columns: repeat(2, 1fr); }
+    .cols-4, .cases-grid { grid-template-columns: repeat(2, 1fr); }
     .footer-main-grid { grid-template-columns: 1fr; gap: 40px; }
 }
 
@@ -1939,16 +2113,17 @@ img {
     .header-right .coverage-badge { display: none; }
     .hero { padding: 130px 0 60px; min-height: auto; }
     .hero-cta-group, .cta-actions-group, .form-buttons-group { flex-direction: column; }
-    .cols-4, .cols-3, .cols-2, .checklist-grid, .diff-items-grid, .form-grid.cols-2 { grid-template-columns: 1fr; }
+    .cols-4, .cols-3, .cols-2, .checklist-grid, .diff-items-grid, .form-grid.cols-2, .cases-grid { grid-template-columns: 1fr; }
     .form-container-card { padding: 28px 18px; }
     .diagnostic-card-wrapper { padding: 24px 18px; }
     .workflow-visual { flex-direction: column; }
     .wf-connector { transform: rotate(90deg); margin: 4px 0; }
+    .mobile-bottom-bar { display: block; }
     .whatsapp-float-btn {
-        bottom: 20px;
-        right: 20px;
-        width: 58px;
-        height: 58px;
+        bottom: 78px;
+        right: 18px;
+        width: 54px;
+        height: 54px;
     }
     .whatsapp-tooltip { display: none; }
 }
@@ -1961,3 +2136,4 @@ img {
         scroll-behavior: auto !important;
     }
 }
+
