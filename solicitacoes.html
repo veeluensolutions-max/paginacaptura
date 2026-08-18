@@ -595,6 +595,15 @@
         </div>
 
         <div class="header-actions">
+            <div class="db-status-badge" style="display: flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 6px 12px; border-radius: 50px; font-size: 0.78rem; font-weight: 700; color: #34D399;">
+                <span style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px #10B981;"></span>
+                <span>Supabase Conectado</span>
+            </div>
+
+            <button class="btn btn-secondary btn-sm" id="btn-sync-now" title="Atualizar dados do Supabase agora">
+                <span>🔄 Atualizar</span>
+            </button>
+
             <a href="index.html" class="btn btn-secondary btn-sm" target="_blank">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 <span>Ver Landing Page</span>
@@ -1088,13 +1097,24 @@
                 renderDashboard(cachedLeads);
             });
 
-            // Listeners de Filtro
-            searchInput.addEventListener('input', () => renderDashboard(cachedLeads));
-            filterStatus.addEventListener('change', () => renderDashboard(cachedLeads));
-            filterUrgencia.addEventListener('change', () => renderDashboard(cachedLeads));
+            // Botão de Atualização Manual
+            const btnSyncNow = document.getElementById('btn-sync-now');
+            if (btnSyncNow) {
+                btnSyncNow.addEventListener('click', async () => {
+                    const originalText = btnSyncNow.innerHTML;
+                    btnSyncNow.innerHTML = '<span>⏳ Atualizando...</span>';
+                    await fetchLeads();
+                    setTimeout(() => {
+                        btnSyncNow.innerHTML = originalText;
+                    }, 500);
+                });
+            }
 
             // Carregamento Inicial do Banco
             fetchLeads();
+
+            // Auto-atualização periódica a cada 15 segundos
+            setInterval(fetchLeads, 15000);
         });
     </script>
 </body>
