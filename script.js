@@ -331,7 +331,53 @@ document.addEventListener('DOMContentLoaded', () => {
             url_origem: dataPayload.url_origem || ''
         };
 
-        // Salva no localStorage para acesso imediato no painel de solicitações
+        // Salva no Supabase (Banco de Dados em Nuvem)
+        let supabaseSuccess = false;
+        if (window.supabase) {
+            try {
+                const supabaseClient = window.supabase.createClient(
+                    'https://qqvrgxhemzsgjbradlqv.supabase.co',
+                    'sb_publishable_IxdmYD6DJ_GMfxGbP2rOnw_3wP9u-_c'
+                );
+                
+                const { error } = await supabaseClient.from('leads').insert([{
+                    id: newLead.id,
+                    data_envio: newLead.data_envio,
+                    status: newLead.status,
+                    nome: newLead.nome,
+                    empresa: newLead.empresa,
+                    cargo: newLead.cargo,
+                    segmento: newLead.segmento,
+                    email: newLead.email,
+                    whatsapp: newLead.whatsapp,
+                    cidade: newLead.cidade,
+                    estado: newLead.estado,
+                    possui_fonte: newLead.possui_fonte,
+                    necessidade: newLead.necessidade,
+                    tem_prazo: newLead.tem_prazo,
+                    prazo: newLead.prazo,
+                    mensagem: newLead.mensagem,
+                    utm_source: newLead.utm_source,
+                    utm_medium: newLead.utm_medium,
+                    utm_campaign: newLead.utm_campaign,
+                    utm_content: newLead.utm_content,
+                    utm_term: newLead.utm_term,
+                    gclid: newLead.gclid,
+                    url_origem: newLead.url_origem
+                }]);
+
+                if (!error) {
+                    supabaseSuccess = true;
+                    console.log('[Supabase] Lead inserido com sucesso!');
+                } else {
+                    console.warn('[Supabase] Erro ao inserir lead:', error);
+                }
+            } catch (err) {
+                console.error('[Supabase] Falha de conexão:', err);
+            }
+        }
+
+        // Salva no localStorage como backup de segurança
         try {
             const existingLeads = JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
             existingLeads.unshift(newLead);

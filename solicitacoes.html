@@ -716,6 +716,9 @@
         </div>
     </div>
 
+    <!-- SUPABASE JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- SCRIPT DO PAINEL DE LEADS -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -731,23 +734,45 @@
             const modalContent = document.getElementById('modal-content');
             const modalCloseBtn = document.getElementById('modal-close-btn');
 
-            // 1. Carrega os leads do localStorage
-            function getLeads() {
-                try {
-                    return JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
-                } catch (e) {
-                    return [];
+            // 1. Inicializa Cliente Supabase
+            const SUPABASE_URL = 'https://qqvrgxhemzsgjbradlqv.supabase.co';
+            const SUPABASE_ANON_KEY = 'sb_publishable_IxdmYD6DJ_GMfxGbP2rOnw_3wP9u-_c';
+            const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+            let cachedLeads = [];
+
+            // 2. Carrega os leads do Supabase com fallback para o localStorage
+            async function fetchLeads() {
+                let leads = [];
+                if (supabase) {
+                    try {
+                        const { data, error } = await supabase
+                            .from('leads')
+                            .select('*')
+                            .order('created_at', { ascending: false });
+
+                        if (!error && data) {
+                            leads = data;
+                            // Atualiza o backup local
+                            localStorage.setItem('excelencia_leads', JSON.stringify(leads));
+                        } else {
+                            console.warn('[Supabase] Erro ao buscar dados, usando local:', error);
+                            leads = JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
+                        }
+                    } catch (e) {
+                        console.error('[Supabase] Falha ao consultar:', e);
+                        leads = JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
+                    }
+                } else {
+                    leads = JSON.parse(localStorage.getItem('excelencia_leads') || '[]');
                 }
+                
+                cachedLeads = leads;
+                renderDashboard(cachedLeads);
             }
 
-            function saveLeads(leads) {
-                localStorage.setItem('excelencia_leads', JSON.stringify(leads));
-                renderDashboard();
-            }
-
-            // 2. Renderiza os Cards e Tabela
-            function renderDashboard() {
-                const allLeads = getLeads();
+            // 3. Renderiza os Cards e Tabela
+            function renderDashboard(allLeads = cachedLeads) {
                 const searchTerm = searchInput.value.toLowerCase().trim();
                 const statusTerm = filterStatus.value;
                 const urgenciaTerm = filterUrgencia.value;
@@ -856,26 +881,40 @@
                 }
             }
 
-            // 3. Funções Globais para Mudança de Status e Ações
-            window.changeLeadStatus = (id, newStatus) => {
-                const leads = getLeads();
-                const leadIndex = leads.findIndex(l => l.id === id);
+            // 4. Funções Globais para Mudança de Status e Ações
+            window.changeLeadStatus = async (id, newStatus) => {
+                if (supabase) {
+                    try {
+                        await supabase.from('leads').update({ status: newStatus }).eq('id', id);
+                    } catch (e) {
+                        console.error('Erro ao atualizar status no Supabase:', e);
+                    }
+                }
+                const leadIndex = cachedLeads.findIndex(l => l.id === id);
                 if (leadIndex !== -1) {
-                    leads[leadIndex].status = newStatus;
-                    saveLeads(leads);
+                    cachedLeads[leadIndex].status = newStatus;
+                    localStorage.setItem('excelencia_leads', JSON.stringify(cachedLeads));
+                    renderDashboard(cachedLeads);
                 }
             };
 
-            window.deleteLead = (id) => {
+            window.deleteLead = async (id) => {
                 if (confirm('Deseja realmente remover esta solicitação?')) {
-                    let leads = getLeads();
-                    leads = leads.filter(l => l.id !== id);
-                    saveLeads(leads);
+                    if (supabase) {
+                        try {
+                            await supabase.from('leads').delete().eq('id', id);
+                        } catch (e) {
+                            console.error('Erro ao deletar no Supabase:', e);
+                        }
+                    }
+                    cachedLeads = cachedLeads.filter(l => l.id !== id);
+                    localStorage.setItem('excelencia_leads', JSON.stringify(cachedLeads));
+                    renderDashboard(cachedLeads);
                 }
             };
 
             window.viewLeadDetails = (id) => {
-                const lead = getLeads().find(l => l.id === id);
+                const lead = cachedLeads.find(l => l.id === id);
                 if (!lead) return;
 
                 modalContent.innerHTML = `
@@ -958,10 +997,9 @@
                 if (e.target === modal) modal.classList.remove('active');
             });
 
-            // 4. Exportação para CSV (Compatível com Excel)
+            // 5. Exportação para CSV (Compatível com Excel)
             btnExportCsv.addEventListener('click', () => {
-                const leads = getLeads();
-                if (leads.length === 0) {
+                if (cachedLeads.length === 0) {
                     alert('Não há solicitações para exportar.');
                     return;
                 }
@@ -972,7 +1010,7 @@
                     headers.join(';')
                 ];
 
-                leads.forEach(l => {
+                cachedLeads.forEach(l => {
                     const row = [
                         l.id,
                         `"${l.data_envio || ''}"`,
@@ -1005,12 +1043,11 @@
                 a.click();
             });
 
-            // 5. Botão de Simulação de Lead
-            btnDemoLead.addEventListener('click', () => {
+            // 6. Botão de Simulação de Lead
+            btnDemoLead.addEventListener('click', async () => {
                 const demoLead = {
                     id: 'LEAD-' + Date.now(),
                     data_envio: new Date().toLocaleString('pt-BR'),
-                    timestamp: Date.now(),
                     status: 'Novo',
                     nome: 'Carlos Eduardo Mendes',
                     empresa: 'Indústria Química Nordeste S/A',
@@ -1031,18 +1068,26 @@
                     utm_content: 'anuncio_conama_513'
                 };
 
-                const leads = getLeads();
-                leads.unshift(demoLead);
-                saveLeads(leads);
+                if (supabase) {
+                    try {
+                        await supabase.from('leads').insert([demoLead]);
+                    } catch (e) {
+                        console.error('Erro ao simular no Supabase:', e);
+                    }
+                }
+
+                cachedLeads.unshift(demoLead);
+                localStorage.setItem('excelencia_leads', JSON.stringify(cachedLeads));
+                renderDashboard(cachedLeads);
             });
 
             // Listeners de Filtro
-            searchInput.addEventListener('input', renderDashboard);
-            filterStatus.addEventListener('change', renderDashboard);
-            filterUrgencia.addEventListener('change', renderDashboard);
+            searchInput.addEventListener('input', () => renderDashboard(cachedLeads));
+            filterStatus.addEventListener('change', () => renderDashboard(cachedLeads));
+            filterUrgencia.addEventListener('change', () => renderDashboard(cachedLeads));
 
-            // Render Inicial
-            renderDashboard();
+            // Carregamento Inicial do Banco
+            fetchLeads();
         });
     </script>
 </body>
